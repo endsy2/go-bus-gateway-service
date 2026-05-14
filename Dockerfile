@@ -1,32 +1,30 @@
-# ─── Stage 1: Build ───────────────────────────────────────────────────────────
+# ─── Stage 1: Build ─────────────────────────────
 FROM gradle:8.5-jdk17 AS build
 WORKDIR /app
 
-# Copy gradle wrapper and root build files from backend directory
-COPY backend/gradlew gradlew
-COPY backend/gradle gradle
-COPY backend/build.gradle build.gradle
-COPY backend/settings.gradle settings.gradle
+# Copy entire project
+COPY . .
 
-# Copy gateway-service specific files
-COPY backend/gateway-service/build.gradle gateway-service/build.gradle
-COPY backend/gateway-service/src gateway-service/src
+# FIX: ensure gradlew is executable
+RUN chmod +x gradlew
 
-# Build the service
-RUN ./gradlew :gateway-service:build -x test --no-daemon
+# Build the application
+RUN ./gradlew build -x test --no-daemon
 
-# ─── Stage 2: Runtime ─────────────────────────────────────────────────────────
+
+# ─── Stage 2: Runtime ───────────────────────────
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 
 RUN apk add --no-cache curl
 
-COPY --from=build /app/gateway-service/build/libs/*.jar app.jar
+# Copy built jar with explicit name
+COPY --from=build /app/build/libs/gateway-server-*.jar app.jar
 
-# Railway provides PORT environment variable
-ENV PORT=8080
+# Verify jar exists and list contents
+RUN ls -lh /app/ && echo "Java version:" && java -version
 
-EXPOSE ${PORT}
+EXPOSE 8761
 
-# Use Railway's PORT variable and set memory limits
-ENTRYPOINT ["sh", "-c", "java -Dserver.port=${PORT} -Xmx512m -Xms256m -jar app.jar"]
+# Add verbose logging to see what's happening
+ENTRYPOINT ["sh", "-c", "echo 'Starting Gateway Server on port '${PORT:-8080} && java -Dserver.port=${PORT:-8080} -Dspring.profiles.active=${SPRING_PROFILES_ACTIVE:-production} -Xmx768m -Xms512m -jar app.jar"]

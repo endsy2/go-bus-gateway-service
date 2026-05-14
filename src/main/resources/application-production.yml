@@ -3,7 +3,7 @@ server:
 
 # ── CORS Configuration ─────────────────────────────────────────────────────────
 cors:
-  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173,http://localhost:4200,http://172.19.64.1:3000}
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173,http://localhost:4200,http://172.19.64.1:3000,*,0.0.0.0}
   allowed-methods: ${CORS_ALLOWED_METHODS:GET,POST,PUT,DELETE,OPTIONS,PATCH}
   allowed-headers: ${CORS_ALLOWED_HEADERS:*}
   allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}
@@ -12,8 +12,6 @@ cors:
 spring:
   application:
     name: gateway-service
-  profiles:
-    active: production
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -30,6 +28,33 @@ spring:
           lower-case-service-id: true
       # Explicit named routes (preferred for production)
       routes:
+
+        # ── WebSocket Routes ────────────────────────────────────────────────
+        # IMPORTANT: WebSocket routes must come BEFORE HTTP routes to match correctly
+
+        # Bus Service WebSocket - All SockJS endpoints
+        - id: bus-websocket
+          uri: lb:ws://bus-service
+          predicates:
+            - Path=/bus-service/ws/bus/**
+          filters:
+            - RewritePath=/bus-service/ws/bus/(?<segment>.*), /ws/bus/$\{segment}
+
+        # Booking Service WebSocket - All SockJS endpoints
+        - id: booking-websocket
+          uri: lb:ws://booking-service
+          predicates:
+            - Path=/booking-service/ws/booking/**
+          filters:
+            - RewritePath=/booking-service/ws/booking/(?<segment>.*), /ws/booking/$\{segment}
+
+        # Admin Dashboard WebSocket
+        - id: admin-dashboard-websocket
+          uri: lb:ws://booking-service
+          predicates:
+            - Path=/admin/ws/dashboard/**
+          filters:
+            - RewritePath=/admin/ws/dashboard/(?<segment>.*), /ws/booking/$\{segment}
         # ── Auth (public — no JWT required) ───────────────────────────────────
         - id: auth-service
           uri: lb://user-service
@@ -55,7 +80,7 @@ spring:
         - id: admin-user-service
           uri: lb://user-service
           predicates:
-            - Path=/api/admin/users/**,/api/admin/roles/**,/api/admin/permissions/**
+            - Path=/api/admin/users/**,/api/admin/roles/**,/api/admin/permissions/**,/api/admin/reports-customer/**
           filters:
             - name: CircuitBreaker
               args:
@@ -72,32 +97,11 @@ spring:
                   factor: 2
                   basedOnPreviousValue: false
 
-        # ── Bakong Top-Up (needs longer timeout for payment processing) ──────
-        - id: bakong-topup-service
-          uri: lb://user-service
-          predicates:
-            - Path=/api/wallets/top-up/bakong/**
-          filters:
-            - name: CircuitBreaker
-              args:
-                name: bakongTopUpCB
-                fallbackUri: forward:/fallback/user-service
-            - name: Retry
-              args:
-                retries: 1
-                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
-                methods: POST
-                backoff:
-                  firstBackoff: 100ms
-                  maxBackoff: 1000ms
-                  factor: 2
-                  basedOnPreviousValue: false
-
         # ── User Service ───────────────────────────────────────────────────────
         - id: user-service
           uri: lb://user-service
           predicates:
-            - Path=/api/users/**,/api/wallet/**,/api/wallets/**,/api/notifications/**,/api/topups/**,/api/preferences/**
+            - Path=/api/users/**,/api/wallet/**,/api/wallets/**,/api/notifications/**,/api/topups/**,/api/preferences/**,/api/profile/**
           filters:
             - name: CircuitBreaker
               args:
@@ -117,7 +121,27 @@ spring:
         - id: bus-service
           uri: lb://bus-service
           predicates:
-            - Path=/api/buses/**,/api/routes/**,/api/layouts/**,/api/schedules/**,/api/seats/**
+            - Path=/api/buses/**,/api/routes/**,/api/layouts/**,/api/schedules/**,/api/seats/**,/api/schedule-seats/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: busServiceCB
+                fallbackUri: forward:/fallback/bus-service
+            - name: Retry
+              args:
+                retries: 3
+                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE,GATEWAY_TIMEOUT
+                methods: GET,POST,PUT,DELETE
+                backoff:
+                  firstBackoff: 50ms
+                  maxBackoff: 500ms
+                  factor: 2
+                  basedOnPreviousValue: false
+        # ── Admin Bus Service ────────────────────────────────────────────────────────
+        - id: admin-bus-service
+          uri: lb://bus-service
+          predicates:
+            - Path=/api/admin/reports-bus
           filters:
             - name: CircuitBreaker
               args:
@@ -137,7 +161,7 @@ spring:
         - id: admin-booking-service
           uri: lb://booking-service
           predicates:
-            - Path=/api/admin/bookings/**,/api/admin/reports-operation/**,/api/admin/financial-reports/**,/api/admin/dashboard/**
+            - Path=/api/admin/bookings/**,/api/admin/reports-operation/**,/api/admin/financial-reports/**,/api/admin/dashboard/**,/api/admin/refunds/**
           filters:
             - name: CircuitBreaker
               args:
@@ -158,7 +182,7 @@ spring:
         - id: booking-service
           uri: lb://booking-service
           predicates:
-            - Path=/api/bookings/**,/api/payments/**,/api/tickets/**,/api/promos/**,/api/bakong/**
+            - Path=/api/bookings/**,/api/payments/**,/api/tickets/**,/api/promos/**,/api/refunds/**
           filters:
             - name: CircuitBreaker
               args:
@@ -174,33 +198,6 @@ spring:
                   maxBackoff: 500ms
                   factor: 2
                   basedOnPreviousValue: false
-
-        # ── WebSocket Routes ────────────────────────────────────────────────
-        # IMPORTANT: WebSocket routes must come BEFORE HTTP routes to match correctly
-        
-        # Bus Service WebSocket - All SockJS endpoints
-        - id: bus-websocket
-          uri: lb:ws://bus-service
-          predicates:
-            - Path=/bus-service/ws/bus/**
-          filters:
-            - RewritePath=/bus-service/ws/bus/(?<segment>.*), /ws/bus/$\{segment}
-
-        # Booking Service WebSocket - All SockJS endpoints
-        - id: booking-websocket
-          uri: lb:ws://booking-service
-          predicates:
-            - Path=/booking-service/ws/booking/**
-          filters:
-            - RewritePath=/booking-service/ws/booking/(?<segment>.*), /ws/booking/$\{segment}
-
-        # Admin Dashboard WebSocket
-        - id: admin-dashboard-websocket
-          uri: lb:ws://booking-service
-          predicates:
-            - Path=/admin/ws/dashboard/**
-          filters:
-            - RewritePath=/admin/ws/dashboard/(?<segment>.*), /ws/booking/$\{segment}
 
 
 # ── JWT Configuration ──────────────────────────────────────────────────────────
@@ -218,7 +215,7 @@ qQIDAQAB"
 eureka:
   client:
     service-url:
-      defaultZone: http://${EUREKA_HOST:localhost}:${EUREKA_PORT:8761}/eureka/
+      defaultZone: http://${Eureka-Service-Url}/eureka/
     fetch-registry: true
     register-with-eureka: true
   instance:
@@ -267,10 +264,6 @@ resilience4j:
         ignoreExceptions:
           - org.springframework.web.client.HttpClientErrorException
     instances:
-      bakongTopUpCB:
-        baseConfig: default
-        failureRateThreshold: 60
-        slowCallDurationThreshold: 10s  # Bakong can be slow
       userServiceCB:
         baseConfig: default
       busServiceCB:
@@ -282,14 +275,11 @@ resilience4j:
   timelimiter:
     configs:
       default:
-        timeoutDuration: 10s  # General requests timeout
+        timeoutDuration: 10s  # Increased from 5s to 10s for general requests
         cancelRunningFuture: true
     instances:
-      bakongTopUpCB:
-        timeoutDuration: 300s  # 5 minutes for Bakong top-up processing
-        cancelRunningFuture: false
       userServiceCB:
-        baseConfig: default  # 10 seconds for regular user-service requests
+        baseConfig: default
       busServiceCB:
         baseConfig: default
       bookingServiceCB:
