@@ -19,7 +19,7 @@ WORKDIR /app
 RUN apk add --no-cache curl
 
 # Copy built jar with explicit name
-COPY --from=build /app/build/libs/gateway-server-*.jar app.jar
+COPY --from=build /app/build/libs/gateway-service.jar app.jar
 
 # Verify jar exists and list contents
 RUN ls -lh /app/ && echo "Java version:" && java -version
