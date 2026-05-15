@@ -215,7 +215,7 @@ qQIDAQAB"
 eureka:
   client:
     service-url:
-      defaultZone: https://go-bus-registry-service-production.up.railway.app/eureka/
+      defaultZone: http://${EUREKA_HOST:localhost}:${EUREKA_PORT:8761}/eureka/
     fetch-registry: true
     register-with-eureka: true
   instance:
