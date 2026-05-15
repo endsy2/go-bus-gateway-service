@@ -20,6 +20,14 @@ spring:
       timeout: 2000ms
   cloud:
     gateway:
+      # ── HTTP Client Configuration (for long-running requests) ──────────────
+      httpclient:
+        connect-timeout: 5000      # 5 seconds to establish connection
+        response-timeout: 310s     # 5 minutes + 10s buffer for Bakong
+        pool:
+          type: ELASTIC
+          max-connections: 500
+          max-idle-time: 30s
       # Automatically create routes for every registered Eureka service:
       # e.g. http://localhost:8080/user-service/** → lb://user-service/**
       discovery:
@@ -70,7 +78,7 @@ spring:
                   factor: 2
                   basedOnPreviousValue: false
 
-        # ── Bakong Top-Up (needs longer timeout for payment processing) ──────
+        # ── Bakong Top-Up (needs 5-minute timeout for payment processing) ──────
         - id: bakong-topup-service
           uri: lb://user-service
           predicates:
@@ -82,14 +90,12 @@ spring:
                 fallbackUri: forward:/fallback/user-service
             - name: Retry
               args:
-                retries: 1
+                retries: 0  # Don't retry long-running requests (5 min)
                 statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
                 methods: POST
-                backoff:
-                  firstBackoff: 100ms
-                  maxBackoff: 1000ms
-                  factor: 2
-                  basedOnPreviousValue: false
+          metadata:
+            response-timeout: 310000  # 5 minutes + 10 seconds (milliseconds)
+            connect-timeout: 5000      # 5 seconds (milliseconds)
 
         # ── User Service ───────────────────────────────────────────────────────
         - id: user-service
@@ -211,7 +217,7 @@ jwt:
 eureka:
   client:
     service-url:
-      defaultZone: http://${REGISTRY_SERVICE_URL}/eureka/
+      defaultZone: ${REGISTRY_SERVICE_URL:http://localhost:8761}/eureka/
     fetch-registry: true
     register-with-eureka: true
   instance:
@@ -263,7 +269,8 @@ resilience4j:
       bakongTopUpCB:
         baseConfig: default
         failureRateThreshold: 60
-        slowCallDurationThreshold: 10s  # Bakong can be slow
+        slowCallDurationThreshold: 300s  # 5 minutes (don't mark as slow)
+        minimumNumberOfCalls: 3  # Lower threshold for long requests
       userServiceCB:
         baseConfig: default
       busServiceCB:
