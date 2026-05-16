@@ -30,7 +30,7 @@ public class RateLimiterConfig {
      */
     @Bean
     @Primary
-    public KeyResolver userKeyResolver() {
+    public static KeyResolver userKeyResolver() {
         return exchange -> {
             String userId = exchange.getRequest().getHeaders().getFirst("X-User-Id");
             if (userId != null && !userId.isBlank()) {
@@ -44,13 +44,13 @@ public class RateLimiterConfig {
      * IP-only resolver – used for auth routes where no JWT is expected.
      */
     @Bean
-    public KeyResolver ipKeyResolver() {
+    public static KeyResolver ipKeyResolver() {
         return exchange -> Mono.just(
                 "ip:" + resolveIp(exchange.getRequest().getRemoteAddress())
         );
     }
 
-    private String resolveIp(InetSocketAddress remote) {
+    private static String resolveIp(InetSocketAddress remote) {
         return Optional.ofNullable(remote)
                 .map(InetSocketAddress::getAddress)
                 .map(InetAddress::getHostAddress)

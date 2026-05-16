@@ -13,23 +13,10 @@ import java.util.List;
 @Configuration
 public class CorsConfig {
 
-    @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:5173,http://172.19.64.1:3000}")
-    private String allowedOrigins;
-
-    @Value("${cors.allowed-methods:GET,POST,PUT,DELETE,OPTIONS,PATCH}")
-    private String allowedMethods;
-
-    @Value("${cors.allowed-headers:*}")
-    private String allowedHeaders;
-
-    @Value("${cors.allow-credentials:true}")
-    private boolean allowCredentials;
-
-    @Value("${cors.max-age:3600}")
-    private long maxAge;
-
     @Bean
-    public UrlBasedCorsConfigurationSource corsConfigurationSource() {
+    public static UrlBasedCorsConfigurationSource corsConfigurationSource(
+            @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:5173,http://172.19.64.1:3000}") String allowedOrigins,
+            @Value("${cors.max-age:3600}") long maxAge) {
         CorsConfiguration config = new CorsConfiguration();
         
         // Parse allowed origins from configuration
@@ -71,7 +58,7 @@ public class CorsConfig {
     }
 
     @Bean
-    public CorsWebFilter corsWebFilter() {
-        return new CorsWebFilter(corsConfigurationSource());
+    public CorsWebFilter corsWebFilter(UrlBasedCorsConfigurationSource corsConfigurationSource) {
+        return new CorsWebFilter(corsConfigurationSource);
     }
 }

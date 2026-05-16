@@ -33,7 +33,7 @@ public class Resilience4jConfig {
      *  - booking: 20 req/s per user  (booking/payment — resource-intensive ops)
      */
     @Bean
-    public RateLimiterRegistry rateLimiterRegistry() {
+    public static RateLimiterRegistry rateLimiterRegistry() {
         RateLimiterConfig authConfig = RateLimiterConfig.custom()
                 .limitForPeriod(10)
                 .limitRefreshPeriod(Duration.ofSeconds(1))
@@ -69,7 +69,7 @@ public class Resilience4jConfig {
      * which is configured in application.yml
      */
     @Bean
-    public Customizer<ReactiveResilience4JCircuitBreakerFactory> defaultCustomizer() {
+    public static Customizer<ReactiveResilience4JCircuitBreakerFactory> defaultCustomizer() {
         return factory -> factory.configureDefault(id -> new Resilience4JConfigBuilder(id)
                 .circuitBreakerConfig(CircuitBreakerConfig.ofDefaults())
                 .timeLimiterConfig(TimeLimiterConfig.custom()
