@@ -291,12 +291,29 @@ resilience4j:
 logging:
   level:
     root: INFO
-    com.busapp.gatewayservice: INFO
-    org.springframework.cloud.gateway: INFO
-    org.springframework.cloud.gateway.handler: WARN
-    org.springframework.cloud.gateway.filter: WARN
-    org.springframework.cloud.gateway.route: WARN
-    org.springframework.web: INFO
-    org.springframework.security: INFO
+    com.busapp.gatewayservice: DEBUG
+    # Gateway routing and request handling
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.cloud.gateway.handler: DEBUG
+    org.springframework.cloud.gateway.filter: DEBUG
+    org.springframework.cloud.gateway.route: DEBUG
+    org.springframework.cloud.gateway.handler.RoutePredicateHandlerMapping: DEBUG
+    # Circuit breaker and resilience
+    org.springframework.cloud.gateway.filter.factory.SpringCloudCircuitBreakerFilterFactory: DEBUG
+    io.github.resilience4j: DEBUG
+    # HTTP client and network
+    org.springframework.web: DEBUG
+    org.springframework.web.reactive: DEBUG
+    org.springframework.http: DEBUG
+    reactor.netty: DEBUG
+    reactor.netty.http.client: DEBUG
+    # Security and authentication
+    org.springframework.security: DEBUG
+    org.springframework.security.web: DEBUG
+    # Service discovery
+    com.netflix.discovery: DEBUG
+    org.springframework.cloud.netflix.eureka: DEBUG
+    # Load balancer
+    org.springframework.cloud.loadbalancer: DEBUG
+    # Suppress known noise
     org.springframework.cloud.gateway.filter.headers.observation: WARN
-    reactor.netty: INFO
