@@ -128,12 +128,13 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                     newHeaders.set("X-User-Roles",       rolesHeader);
                     newHeaders.set("X-User-Permissions", permissionsHeader);
 
-                    ServerHttpRequestDecorator mutatedRequest = new ServerHttpRequestDecorator(exchange.getRequest()) {
-                        @Override
-                        public HttpHeaders getHeaders() {
-                            return HttpHeaders.readOnlyHttpHeaders(newHeaders);
-                        }
-                    };
+                    ServerHttpRequestDecorator mutatedRequest =
+                    new ServerHttpRequestDecorator(exchange.getRequest()) {
+                    @Override
+                    public HttpHeaders getHeaders() {
+                        return newHeaders;
+                    }
+        };
 
                     return chain.filter(exchange.mutate().request(mutatedRequest).build());
                 });
