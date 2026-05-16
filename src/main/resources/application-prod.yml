@@ -283,13 +283,12 @@ resilience4j:
 logging:
   level:
     root: INFO
-    com.busapp.gatewayservice: DEBUG
-    org.springframework.cloud.gateway: DEBUG
-    org.springframework.cloud.gateway.handler: DEBUG
-    org.springframework.cloud.gateway.filter: DEBUG
-    org.springframework.web: DEBUG
-    org.springframework.security: DEBUG
-    # Suppress Micrometer observation span noise (http.status_code='UNKNOWN' is a
-    # known SCG 4.1.x bug — status tag is unset at span-creation time; not a real error)
+    com.busapp.gatewayservice: INFO
+    org.springframework.cloud.gateway: INFO
+    org.springframework.cloud.gateway.handler: WARN
+    org.springframework.cloud.gateway.filter: WARN
+    org.springframework.cloud.gateway.route: WARN
+    org.springframework.web: INFO
+    org.springframework.security: INFO
     org.springframework.cloud.gateway.filter.headers.observation: WARN
-    reactor.netty: DEBUG
+    reactor.netty: INFO
