@@ -4,6 +4,7 @@ import com.netflix.discovery.EurekaClient;
 import com.netflix.discovery.shared.Application;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.gateway.route.Route;
 import org.springframework.cloud.gateway.route.RouteLocator;
 import org.springframework.http.HttpStatus;
@@ -23,15 +24,15 @@ import java.util.stream.Collectors;
 public class HealthCheckController {
 
     private final RouteLocator routeLocator;
-    private final EurekaClient eurekaClient;
-    private final CircuitBreakerRegistry circuitBreakerRegistry;
+    
+    @Autowired(required = false)
+    private EurekaClient eurekaClient;
+    
+    @Autowired(required = false)
+    private CircuitBreakerRegistry circuitBreakerRegistry;
 
-    public HealthCheckController(RouteLocator routeLocator, 
-                                  EurekaClient eurekaClient,
-                                  CircuitBreakerRegistry circuitBreakerRegistry) {
+    public HealthCheckController(RouteLocator routeLocator) {
         this.routeLocator = routeLocator;
-        this.eurekaClient = eurekaClient;
-        this.circuitBreakerRegistry = circuitBreakerRegistry;
     }
 
     @GetMapping("/health")
@@ -53,7 +54,6 @@ public class HealthCheckController {
 
     /**
      * Debug endpoint to list all configured routes.
-     * Useful for verifying route configuration and troubleshooting.
      */
     @GetMapping("/debug/routes")
     public Mono<ResponseEntity<Map<String, Object>>> listRoutes() {
@@ -84,7 +84,6 @@ public class HealthCheckController {
 
     /**
      * Comprehensive diagnostic endpoint for a specific service.
-     * Shows why you cannot proxy to a service.
      * 
      * Usage: GET /debug/service/{serviceName}
      * Example: GET /debug/service/USER-SERVICE
@@ -95,128 +94,161 @@ public class HealthCheckController {
         diagnosis.put("timestamp", LocalDateTime.now());
         diagnosis.put("serviceName", serviceName);
 
-        // 1. Check if service is registered in Eureka
-        Application application = eurekaClient.getApplication(serviceName);
-        boolean isRegistered = application != null && !application.getInstances().isEmpty();
-        
-        Map<String, Object> eurekaStatus = new HashMap<>();
-        eurekaStatus.put("registered", isRegistered);
-        
-        if (isRegistered) {
-            eurekaStatus.put("instanceCount", application.getInstances().size());
-            eurekaStatus.put("instances", application.getInstances().stream()
-                    .map(instance -> {
-                        Map<String, Object> inst = new HashMap<>();
-                        inst.put("instanceId", instance.getInstanceId());
-                        inst.put("hostName", instance.getHostName());
-                        inst.put("ipAddr", instance.getIPAddr());
-                        inst.put("port", instance.getPort());
-                        inst.put("status", instance.getStatus().name());
-                        inst.put("healthCheckUrl", instance.getHealthCheckUrl());
-                        inst.put("homePageUrl", instance.getHomePageUrl());
-                        return inst;
-                    })
-                    .collect(Collectors.toList()));
-            eurekaStatus.put("canProxy", true);
-            eurekaStatus.put("reason", "Service is registered and has " + application.getInstances().size() + " instance(s)");
-        } else {
-            eurekaStatus.put("instanceCount", 0);
-            eurekaStatus.put("canProxy", false);
-            eurekaStatus.put("reason", "Service is NOT registered in Eureka. The service must register with Eureka before the gateway can proxy to it.");
-        }
-        diagnosis.put("eureka", eurekaStatus);
-
-        // 2. Check circuit breaker status
-        String cbName = serviceName.toLowerCase().replace("-", "") + "CB";
-        Map<String, Object> circuitBreakerStatus = new HashMap<>();
-        
         try {
-            CircuitBreaker circuitBreaker = circuitBreakerRegistry.circuitBreaker(cbName);
-            CircuitBreaker.State state = circuitBreaker.getState();
-            CircuitBreaker.Metrics metrics = circuitBreaker.getMetrics();
+            // 1. Check if service is registered in Eureka
+            Map<String, Object> eurekaStatus = new HashMap<>();
             
-            circuitBreakerStatus.put("name", cbName);
-            circuitBreakerStatus.put("state", state.name());
-            circuitBreakerStatus.put("failureRate", metrics.getFailureRate());
-            circuitBreakerStatus.put("slowCallRate", metrics.getSlowCallRate());
-            circuitBreakerStatus.put("numberOfFailedCalls", metrics.getNumberOfFailedCalls());
-            circuitBreakerStatus.put("numberOfSuccessfulCalls", metrics.getNumberOfSuccessfulCalls());
-            circuitBreakerStatus.put("numberOfSlowCalls", metrics.getNumberOfSlowCalls());
-            
-            if (state == CircuitBreaker.State.OPEN) {
-                circuitBreakerStatus.put("canProxy", false);
-                circuitBreakerStatus.put("reason", "Circuit breaker is OPEN. Too many failures detected. Wait for it to transition to HALF_OPEN.");
-            } else if (state == CircuitBreaker.State.HALF_OPEN) {
-                circuitBreakerStatus.put("canProxy", true);
-                circuitBreakerStatus.put("reason", "Circuit breaker is HALF_OPEN. Testing if service has recovered.");
+            if (eurekaClient == null) {
+                eurekaStatus.put("available", false);
+                eurekaStatus.put("reason", "EurekaClient not available. Check if Eureka is enabled.");
+                eurekaStatus.put("canProxy", false);
             } else {
-                circuitBreakerStatus.put("canProxy", true);
-                circuitBreakerStatus.put("reason", "Circuit breaker is CLOSED. Service is healthy.");
+                Application application = eurekaClient.getApplication(serviceName);
+                boolean isRegistered = application != null && !application.getInstances().isEmpty();
+                
+                eurekaStatus.put("available", true);
+                eurekaStatus.put("registered", isRegistered);
+                
+                if (isRegistered) {
+                    eurekaStatus.put("instanceCount", application.getInstances().size());
+                    eurekaStatus.put("instances", application.getInstances().stream()
+                            .map(instance -> {
+                                Map<String, Object> inst = new HashMap<>();
+                                inst.put("instanceId", instance.getInstanceId());
+                                inst.put("hostName", instance.getHostName());
+                                inst.put("ipAddr", instance.getIPAddr());
+                                inst.put("port", instance.getPort());
+                                inst.put("status", instance.getStatus().name());
+                                inst.put("healthCheckUrl", instance.getHealthCheckUrl());
+                                inst.put("homePageUrl", instance.getHomePageUrl());
+                                return inst;
+                            })
+                            .collect(Collectors.toList()));
+                    eurekaStatus.put("canProxy", true);
+                    eurekaStatus.put("reason", "Service is registered with " + application.getInstances().size() + " instance(s)");
+                } else {
+                    eurekaStatus.put("instanceCount", 0);
+                    eurekaStatus.put("canProxy", false);
+                    eurekaStatus.put("reason", "Service is NOT registered in Eureka");
+                    eurekaStatus.put("solution", "Start the " + serviceName + " and ensure it registers with Eureka");
+                }
             }
+            diagnosis.put("eureka", eurekaStatus);
+
+            // 2. Check circuit breaker status
+            Map<String, Object> circuitBreakerStatus = new HashMap<>();
+            
+            if (circuitBreakerRegistry == null) {
+                circuitBreakerStatus.put("available", false);
+                circuitBreakerStatus.put("reason", "CircuitBreakerRegistry not available");
+                circuitBreakerStatus.put("canProxy", true);
+            } else {
+                String cbName = serviceName.toLowerCase().replace("-", "") + "CB";
+                
+                try {
+                    CircuitBreaker circuitBreaker = circuitBreakerRegistry.circuitBreaker(cbName);
+                    CircuitBreaker.State state = circuitBreaker.getState();
+                    CircuitBreaker.Metrics metrics = circuitBreaker.getMetrics();
+                    
+                    circuitBreakerStatus.put("available", true);
+                    circuitBreakerStatus.put("name", cbName);
+                    circuitBreakerStatus.put("state", state.name());
+                    circuitBreakerStatus.put("failureRate", metrics.getFailureRate());
+                    circuitBreakerStatus.put("slowCallRate", metrics.getSlowCallRate());
+                    circuitBreakerStatus.put("numberOfFailedCalls", metrics.getNumberOfFailedCalls());
+                    circuitBreakerStatus.put("numberOfSuccessfulCalls", metrics.getNumberOfSuccessfulCalls());
+                    
+                    if (state == CircuitBreaker.State.OPEN) {
+                        circuitBreakerStatus.put("canProxy", false);
+                        circuitBreakerStatus.put("reason", "Circuit breaker is OPEN (too many failures)");
+                        circuitBreakerStatus.put("solution", "Wait for circuit breaker to transition to HALF_OPEN, or restart gateway");
+                    } else if (state == CircuitBreaker.State.HALF_OPEN) {
+                        circuitBreakerStatus.put("canProxy", true);
+                        circuitBreakerStatus.put("reason", "Circuit breaker is HALF_OPEN (testing recovery)");
+                    } else {
+                        circuitBreakerStatus.put("canProxy", true);
+                        circuitBreakerStatus.put("reason", "Circuit breaker is CLOSED (healthy)");
+                    }
+                } catch (Exception e) {
+                    circuitBreakerStatus.put("available", true);
+                    circuitBreakerStatus.put("name", cbName);
+                    circuitBreakerStatus.put("state", "NOT_INITIALIZED");
+                    circuitBreakerStatus.put("canProxy", true);
+                    circuitBreakerStatus.put("reason", "Circuit breaker not initialized (will be created on first request)");
+                }
+            }
+            diagnosis.put("circuitBreaker", circuitBreakerStatus);
+
+            // 3. Check matching routes
+            List<Map<String, Object>> matchingRoutes = routeLocator.getRoutes()
+                    .filter(route -> route.getUri().toString().contains(serviceName))
+                    .map(route -> {
+                        Map<String, Object> routeInfo = new HashMap<>();
+                        routeInfo.put("id", route.getId());
+                        routeInfo.put("uri", route.getUri().toString());
+                        routeInfo.put("predicates", route.getPredicate().toString());
+                        return routeInfo;
+                    })
+                    .collectList()
+                    .block();
+
+            Map<String, Object> routeStatus = new HashMap<>();
+            routeStatus.put("routesFound", matchingRoutes != null ? matchingRoutes.size() : 0);
+            routeStatus.put("routes", matchingRoutes);
+            
+            if (matchingRoutes != null && !matchingRoutes.isEmpty()) {
+                routeStatus.put("canProxy", true);
+                routeStatus.put("reason", "Found " + matchingRoutes.size() + " route(s) for this service");
+            } else {
+                routeStatus.put("canProxy", false);
+                routeStatus.put("reason", "No routes configured for this service");
+                routeStatus.put("solution", "Add route configuration in application.yml");
+            }
+            diagnosis.put("routes", routeStatus);
+
+            // 4. Overall diagnosis
+            boolean canProxyEureka = eurekaClient != null && (boolean) eurekaStatus.getOrDefault("canProxy", false);
+            boolean canProxyCB = (boolean) circuitBreakerStatus.getOrDefault("canProxy", true);
+            boolean canProxyRoute = (boolean) routeStatus.get("canProxy");
+            
+            Map<String, Object> overall = new HashMap<>();
+            overall.put("canProxy", canProxyEureka && canProxyCB && canProxyRoute);
+            
+            if (!canProxyRoute) {
+                overall.put("status", "CANNOT_PROXY");
+                overall.put("reason", "No routes configured");
+                overall.put("solution", "Add route in application.yml for " + serviceName);
+            } else if (eurekaClient == null) {
+                overall.put("status", "UNKNOWN");
+                overall.put("reason", "Cannot check Eureka registration (EurekaClient not available)");
+                overall.put("solution", "Check if Eureka client is properly configured");
+            } else if (!canProxyEureka) {
+                overall.put("status", "CANNOT_PROXY");
+                overall.put("reason", "Service not registered in Eureka");
+                overall.put("solution", "Start " + serviceName + " and ensure it registers with Eureka");
+            } else if (!canProxyCB) {
+                overall.put("status", "CANNOT_PROXY");
+                overall.put("reason", "Circuit breaker is OPEN");
+                overall.put("solution", "Wait for circuit breaker to recover or restart gateway");
+            } else {
+                overall.put("status", "CAN_PROXY");
+                overall.put("reason", "All checks passed");
+                overall.put("solution", "Service is reachable via gateway");
+            }
+            
+            diagnosis.put("overall", overall);
+
+            HttpStatus status = (boolean) overall.get("canProxy") ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE;
+            return ResponseEntity.status(status).body(diagnosis);
+            
         } catch (Exception e) {
-            circuitBreakerStatus.put("name", cbName);
-            circuitBreakerStatus.put("state", "NOT_FOUND");
-            circuitBreakerStatus.put("canProxy", true);
-            circuitBreakerStatus.put("reason", "Circuit breaker not initialized yet (will be created on first request)");
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Diagnostic failed");
+            error.put("message", e.getMessage());
+            error.put("type", e.getClass().getSimpleName());
+            diagnosis.put("error", error);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(diagnosis);
         }
-        diagnosis.put("circuitBreaker", circuitBreakerStatus);
-
-        // 3. Check matching routes
-        List<Map<String, Object>> matchingRoutes = routeLocator.getRoutes()
-                .filter(route -> route.getUri().toString().contains(serviceName))
-                .map(route -> {
-                    Map<String, Object> routeInfo = new HashMap<>();
-                    routeInfo.put("id", route.getId());
-                    routeInfo.put("uri", route.getUri().toString());
-                    routeInfo.put("predicates", route.getPredicate().toString());
-                    return routeInfo;
-                })
-                .collectList()
-                .block();
-
-        Map<String, Object> routeStatus = new HashMap<>();
-        routeStatus.put("routesFound", matchingRoutes != null ? matchingRoutes.size() : 0);
-        routeStatus.put("routes", matchingRoutes);
-        
-        if (matchingRoutes != null && !matchingRoutes.isEmpty()) {
-            routeStatus.put("canProxy", true);
-            routeStatus.put("reason", "Found " + matchingRoutes.size() + " route(s) configured for this service");
-        } else {
-            routeStatus.put("canProxy", false);
-            routeStatus.put("reason", "No routes configured for this service in gateway configuration");
-        }
-        diagnosis.put("routes", routeStatus);
-
-        // 4. Overall diagnosis
-        boolean canProxyEureka = (boolean) eurekaStatus.get("canProxy");
-        boolean canProxyCB = (boolean) circuitBreakerStatus.get("canProxy");
-        boolean canProxyRoute = (boolean) routeStatus.get("canProxy");
-        
-        Map<String, Object> overall = new HashMap<>();
-        overall.put("canProxy", canProxyEureka && canProxyCB && canProxyRoute);
-        
-        if (!canProxyRoute) {
-            overall.put("status", "CANNOT_PROXY");
-            overall.put("reason", "No routes configured for this service");
-            overall.put("solution", "Add route configuration in application.yml for " + serviceName);
-        } else if (!canProxyEureka) {
-            overall.put("status", "CANNOT_PROXY");
-            overall.put("reason", "Service not registered in Eureka");
-            overall.put("solution", "Start the " + serviceName + " and ensure it registers with Eureka at " + eurekaClient.getEurekaClientConfig().getEurekaServerServiceUrls("defaultZone"));
-        } else if (!canProxyCB) {
-            overall.put("status", "CANNOT_PROXY");
-            overall.put("reason", "Circuit breaker is OPEN");
-            overall.put("solution", "Wait for circuit breaker to transition to HALF_OPEN, or restart the gateway service");
-        } else {
-            overall.put("status", "CAN_PROXY");
-            overall.put("reason", "All checks passed. Service is reachable.");
-            overall.put("solution", "You can now proxy requests to this service");
-        }
-        
-        diagnosis.put("overall", overall);
-
-        HttpStatus status = (boolean) overall.get("canProxy") ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE;
-        return ResponseEntity.status(status).body(diagnosis);
     }
 
     /**
@@ -227,22 +259,35 @@ public class HealthCheckController {
         Map<String, Object> response = new HashMap<>();
         response.put("timestamp", LocalDateTime.now());
         
-        List<Application> applications = eurekaClient.getApplications().getRegisteredApplications();
+        if (eurekaClient == null) {
+            response.put("error", "EurekaClient not available");
+            response.put("reason", "Eureka client is not configured or not started");
+            response.put("solution", "Check eureka configuration in application.yml");
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
+        }
         
-        List<Map<String, Object>> services = applications.stream()
-                .map(app -> {
-                    Map<String, Object> service = new HashMap<>();
-                    service.put("name", app.getName());
-                    service.put("instanceCount", app.getInstances().size());
-                    service.put("status", app.getInstances().isEmpty() ? "DOWN" : "UP");
-                    return service;
-                })
-                .collect(Collectors.toList());
-        
-        response.put("totalServices", services.size());
-        response.put("services", services);
-        response.put("eurekaUrl", eurekaClient.getEurekaClientConfig().getEurekaServerServiceUrls("defaultZone"));
-        
-        return ResponseEntity.ok(response);
+        try {
+            List<Application> applications = eurekaClient.getApplications().getRegisteredApplications();
+            
+            List<Map<String, Object>> services = applications.stream()
+                    .map(app -> {
+                        Map<String, Object> service = new HashMap<>();
+                        service.put("name", app.getName());
+                        service.put("instanceCount", app.getInstances().size());
+                        service.put("status", app.getInstances().isEmpty() ? "DOWN" : "UP");
+                        return service;
+                    })
+                    .collect(Collectors.toList());
+            
+            response.put("totalServices", services.size());
+            response.put("services", services);
+            response.put("eurekaUrl", eurekaClient.getEurekaClientConfig().getEurekaServerServiceUrls("defaultZone"));
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("error", "Failed to fetch services from Eureka");
+            response.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
     }
 }
