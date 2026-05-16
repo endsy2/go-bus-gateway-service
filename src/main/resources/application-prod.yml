@@ -221,7 +221,10 @@ eureka:
   instance:
     prefer-ip-address: true
     lease-renewal-interval-in-seconds: 30
-    lease-expiration-duration-in-seconds: 90points:
+    lease-expiration-duration-in-seconds: 90
+
+management:
+  endpoints:
     web:
       exposure:
         include: health,info,gateway,circuitbreakers,circuitbreakerevents,metrics
