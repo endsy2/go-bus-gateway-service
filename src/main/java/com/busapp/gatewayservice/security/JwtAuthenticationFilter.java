@@ -46,6 +46,8 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             "/api/auth/login",
             "/api/auth/refresh",
             "/actuator",
+            "/health",
+            "/",
             // WebSocket endpoints - all SockJS paths
             "/bus-service/ws/",
             "/booking-service/ws/",
