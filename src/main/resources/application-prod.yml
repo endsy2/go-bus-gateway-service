@@ -67,7 +67,6 @@ spring:
             - name: CircuitBreaker
               args:
                 name: userServiceCB
-                fallbackUri: forward:/fallback/user-service
             - name: Retry
               args:
                 retries: 3
@@ -88,7 +87,6 @@ spring:
             - name: CircuitBreaker
               args:
                 name: userServiceCB
-                fallbackUri: forward:/fallback/user-service
             - name: Retry
               args:
                 retries: 3
@@ -109,7 +107,6 @@ spring:
             - name: CircuitBreaker
               args:
                 name: userServiceCB
-                fallbackUri: forward:/fallback/user-service
             - name: Retry
               args:
                 retries: 3
@@ -129,7 +126,6 @@ spring:
             - name: CircuitBreaker
               args:
                 name: busServiceCB
-                fallbackUri: forward:/fallback/bus-service
             - name: Retry
               args:
                 retries: 3
@@ -149,7 +145,6 @@ spring:
             - name: CircuitBreaker
               args:
                 name: busServiceCB
-                fallbackUri: forward:/fallback/bus-service
             - name: Retry
               args:
                 retries: 3
@@ -169,7 +164,6 @@ spring:
             - name: CircuitBreaker
               args:
                 name: bookingServiceCB
-                fallbackUri: forward:/fallback/booking-service
             - name: Retry
               args:
                 retries: 3
@@ -190,7 +184,6 @@ spring:
             - name: CircuitBreaker
               args:
                 name: bookingServiceCB
-                fallbackUri: forward:/fallback/booking-service
             - name: Retry
               args:
                 retries: 3
