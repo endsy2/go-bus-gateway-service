@@ -89,7 +89,7 @@ public class HealthCheckController {
      * Example: GET /debug/service/USER-SERVICE
      */
     @GetMapping("/debug/service/{serviceName}")
-    public ResponseEntity<Map<String, Object>> diagnoseService(@PathVariable String serviceName) {
+    public Mono<ResponseEntity<Map<String, Object>>> diagnoseService(@PathVariable String serviceName) {
         Map<String, Object> diagnosis = new HashMap<>();
         diagnosis.put("timestamp", LocalDateTime.now());
         diagnosis.put("serviceName", serviceName);
@@ -179,8 +179,8 @@ public class HealthCheckController {
             }
             diagnosis.put("circuitBreaker", circuitBreakerStatus);
 
-            // 3. Check matching routes
-            List<Map<String, Object>> matchingRoutes = routeLocator.getRoutes()
+            // 3. Check matching routes (using reactive approach)
+            return routeLocator.getRoutes()
                     .filter(route -> route.getUri().toString().contains(serviceName))
                     .map(route -> {
                         Map<String, Object> routeInfo = new HashMap<>();
@@ -190,56 +190,56 @@ public class HealthCheckController {
                         return routeInfo;
                     })
                     .collectList()
-                    .block();
+                    .map(matchingRoutes -> {
+                        Map<String, Object> routeStatus = new HashMap<>();
+                        routeStatus.put("routesFound", matchingRoutes.size());
+                        routeStatus.put("routes", matchingRoutes);
+                        
+                        if (!matchingRoutes.isEmpty()) {
+                            routeStatus.put("canProxy", true);
+                            routeStatus.put("reason", "Found " + matchingRoutes.size() + " route(s) for this service");
+                        } else {
+                            routeStatus.put("canProxy", false);
+                            routeStatus.put("reason", "No routes configured for this service");
+                            routeStatus.put("solution", "Add route configuration in application.yml");
+                        }
+                        diagnosis.put("routes", routeStatus);
 
-            Map<String, Object> routeStatus = new HashMap<>();
-            routeStatus.put("routesFound", matchingRoutes != null ? matchingRoutes.size() : 0);
-            routeStatus.put("routes", matchingRoutes);
-            
-            if (matchingRoutes != null && !matchingRoutes.isEmpty()) {
-                routeStatus.put("canProxy", true);
-                routeStatus.put("reason", "Found " + matchingRoutes.size() + " route(s) for this service");
-            } else {
-                routeStatus.put("canProxy", false);
-                routeStatus.put("reason", "No routes configured for this service");
-                routeStatus.put("solution", "Add route configuration in application.yml");
-            }
-            diagnosis.put("routes", routeStatus);
+                        // 4. Overall diagnosis
+                        boolean canProxyEureka = eurekaClient != null && (boolean) eurekaStatus.getOrDefault("canProxy", false);
+                        boolean canProxyCB = (boolean) circuitBreakerStatus.getOrDefault("canProxy", true);
+                        boolean canProxyRoute = (boolean) routeStatus.get("canProxy");
+                        
+                        Map<String, Object> overall = new HashMap<>();
+                        overall.put("canProxy", canProxyEureka && canProxyCB && canProxyRoute);
+                        
+                        if (!canProxyRoute) {
+                            overall.put("status", "CANNOT_PROXY");
+                            overall.put("reason", "No routes configured");
+                            overall.put("solution", "Add route in application.yml for " + serviceName);
+                        } else if (eurekaClient == null) {
+                            overall.put("status", "UNKNOWN");
+                            overall.put("reason", "Cannot check Eureka registration (EurekaClient not available)");
+                            overall.put("solution", "Check if Eureka client is properly configured");
+                        } else if (!canProxyEureka) {
+                            overall.put("status", "CANNOT_PROXY");
+                            overall.put("reason", "Service not registered in Eureka");
+                            overall.put("solution", "Start " + serviceName + " and ensure it registers with Eureka");
+                        } else if (!canProxyCB) {
+                            overall.put("status", "CANNOT_PROXY");
+                            overall.put("reason", "Circuit breaker is OPEN");
+                            overall.put("solution", "Wait for circuit breaker to recover or restart gateway");
+                        } else {
+                            overall.put("status", "CAN_PROXY");
+                            overall.put("reason", "All checks passed");
+                            overall.put("solution", "Service is reachable via gateway");
+                        }
+                        
+                        diagnosis.put("overall", overall);
 
-            // 4. Overall diagnosis
-            boolean canProxyEureka = eurekaClient != null && (boolean) eurekaStatus.getOrDefault("canProxy", false);
-            boolean canProxyCB = (boolean) circuitBreakerStatus.getOrDefault("canProxy", true);
-            boolean canProxyRoute = (boolean) routeStatus.get("canProxy");
-            
-            Map<String, Object> overall = new HashMap<>();
-            overall.put("canProxy", canProxyEureka && canProxyCB && canProxyRoute);
-            
-            if (!canProxyRoute) {
-                overall.put("status", "CANNOT_PROXY");
-                overall.put("reason", "No routes configured");
-                overall.put("solution", "Add route in application.yml for " + serviceName);
-            } else if (eurekaClient == null) {
-                overall.put("status", "UNKNOWN");
-                overall.put("reason", "Cannot check Eureka registration (EurekaClient not available)");
-                overall.put("solution", "Check if Eureka client is properly configured");
-            } else if (!canProxyEureka) {
-                overall.put("status", "CANNOT_PROXY");
-                overall.put("reason", "Service not registered in Eureka");
-                overall.put("solution", "Start " + serviceName + " and ensure it registers with Eureka");
-            } else if (!canProxyCB) {
-                overall.put("status", "CANNOT_PROXY");
-                overall.put("reason", "Circuit breaker is OPEN");
-                overall.put("solution", "Wait for circuit breaker to recover or restart gateway");
-            } else {
-                overall.put("status", "CAN_PROXY");
-                overall.put("reason", "All checks passed");
-                overall.put("solution", "Service is reachable via gateway");
-            }
-            
-            diagnosis.put("overall", overall);
-
-            HttpStatus status = (boolean) overall.get("canProxy") ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE;
-            return ResponseEntity.status(status).body(diagnosis);
+                        HttpStatus status = (boolean) overall.get("canProxy") ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE;
+                        return ResponseEntity.status(status).body(diagnosis);
+                    });
             
         } catch (Exception e) {
             Map<String, Object> error = new HashMap<>();
@@ -247,7 +247,7 @@ public class HealthCheckController {
             error.put("message", e.getMessage());
             error.put("type", e.getClass().getSimpleName());
             diagnosis.put("error", error);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(diagnosis);
+            return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(diagnosis));
         }
     }
 
