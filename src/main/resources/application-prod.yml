@@ -18,7 +18,11 @@ spring:
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
       timeout: 2000ms
+      connect-timeout: 2000ms
   cloud:
+    loadbalancer:
+      ribbon:
+        enabled: false
     gateway:
       # Automatically create routes for every registered Eureka service:
       # e.g. http://localhost:8080/user-service/** → lb://user-service/**
@@ -212,8 +216,12 @@ eureka:
       defaultZone: ${REGISTRY_SERVICE_URL}
     fetch-registry: true
     register-with-eureka: true
+    registry-fetch-interval-seconds: 30
+    initial-instance-info-replication-interval-seconds: 40
   instance:
     prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 30
+    lease-expiration-duration-in-seconds: 90
 
 management:
   endpoints:
