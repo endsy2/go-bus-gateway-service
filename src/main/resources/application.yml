@@ -89,7 +89,7 @@ spring:
                 fallbackUri: forward:/fallback/user-service
             - name: Retry
               args:
-                retries: 0  # Don't retry long-running requests (5 min)
+                retries: 3  # Don't retry long-running requests (5 min)
                 statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
                 methods: POST
           metadata:
