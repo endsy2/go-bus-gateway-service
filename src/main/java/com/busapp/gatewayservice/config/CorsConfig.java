@@ -15,18 +15,12 @@ public class CorsConfig {
 
     @Bean
     public static UrlBasedCorsConfigurationSource corsConfigurationSource(
-            @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:5173,http://172.19.64.1:3000}") String allowedOrigins,
+            @Value("${cors.allowed-origins:*}") String allowedOrigins,
             @Value("${cors.max-age:3600}") long maxAge) {
         CorsConfiguration config = new CorsConfiguration();
         
-        // Parse allowed origins from configuration
-        List<String> origins = Arrays.asList(allowedOrigins.split(","));
-        
-        // Add each origin pattern (trim whitespace)
-        origins.stream()
-            .map(String::trim)
-            .filter(origin -> !origin.isEmpty())
-            .forEach(config::addAllowedOriginPattern);
+        // Allow all origins
+        config.addAllowedOriginPattern("*");
         
         // Allow all methods
         config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"));
@@ -40,16 +34,8 @@ public class CorsConfig {
         // Max age for preflight requests
         config.setMaxAge(maxAge);
         
-        // Expose headers that frontend might need
-        config.setExposedHeaders(Arrays.asList(
-            "Authorization",
-            "Content-Type",
-            "X-User-Id",
-            "X-User-Email",
-            "X-User-Name",
-            "X-User-Roles",
-            "X-User-Permissions"
-        ));
+        // Expose all headers
+        config.addExposedHeader("*");
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
