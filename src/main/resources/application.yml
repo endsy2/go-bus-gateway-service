@@ -28,11 +28,10 @@ spring:
           type: ELASTIC
           max-connections: 500
           max-idle-time: 30s
-      # Automatically create routes for every registered Eureka service:
-      # e.g. http://localhost:8080/user-service/** → lb://user-service/**
+      # Disabled automatic service discovery - using direct URLs instead
       discovery:
         locator:
-          enabled: true
+          enabled: false
           lower-case-service-id: true
       # Explicit named routes (preferred for production)
       routes:

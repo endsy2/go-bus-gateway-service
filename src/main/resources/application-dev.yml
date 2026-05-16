@@ -20,11 +20,10 @@ spring:
       timeout: 2000ms
   cloud:
     gateway:
-      # Automatically create routes for every registered Eureka service:
-      # e.g. http://localhost:8080/user-service/** → lb://user-service/**
+      # Disabled automatic service discovery - using direct URLs instead
       discovery:
         locator:
-          enabled: true
+          enabled: false
           lower-case-service-id: true
       # Explicit named routes (preferred for production)
       routes:
