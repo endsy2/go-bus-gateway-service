@@ -24,10 +24,11 @@ spring:
       ribbon:
         enabled: false
     gateway:
-      # Disabled automatic service discovery - using direct URLs instead
+      # Automatically create routes for every registered Eureka service:
+      # e.g. http://localhost:8080/user-service/** → lb://user-service/**
       discovery:
         locator:
-          enabled: false
+          enabled: true
           lower-case-service-id: true
       # Explicit named routes (preferred for production)
       routes:
@@ -37,7 +38,7 @@ spring:
 
         # Bus Service WebSocket - All SockJS endpoints
         - id: bus-websocket
-          uri: ${BUS_SERVICE_WS_URL:ws://localhost:8082}
+          uri: lb:ws://BUS-SERVICE
           predicates:
             - Path=/bus-service/ws/bus/**
           filters:
@@ -45,7 +46,7 @@ spring:
 
         # Booking Service WebSocket - All SockJS endpoints
         - id: booking-websocket
-          uri: ${BOOKING_SERVICE_WS_URL:ws://localhost:8083}
+          uri: lb:ws://BOOKING-SERVICE
           predicates:
             - Path=/booking-service/ws/booking/**
           filters:
@@ -53,14 +54,14 @@ spring:
 
         # Admin Dashboard WebSocket
         - id: admin-dashboard-websocket
-          uri: ${BOOKING_SERVICE_WS_URL:ws://localhost:8083}
+          uri: lb:ws://BOOKING-SERVICE
           predicates:
             - Path=/admin/ws/dashboard/**
           filters:
             - RewritePath=/admin/ws/dashboard/(?<segment>.*), /ws/booking/$\{segment}
         # ── Auth (public — no JWT required) ───────────────────────────────────
         - id: auth-service
-          uri: ${USER_SERVICE_URL:http://localhost:8081}
+          uri: lb://USER-SERVICE
           predicates:
             - Path=/api/auth/**
           filters:
@@ -81,7 +82,7 @@ spring:
 
         # ── Admin — User Service ───────────────────────────────────────────────
         - id: admin-user-service
-          uri: ${USER_SERVICE_URL:http://localhost:8081}
+          uri: lb://USER-SERVICE
           predicates:
             - Path=/api/admin/users/**,/api/admin/roles/**,/api/admin/permissions/**,/api/admin/reports-customer/**
           filters:
@@ -102,7 +103,7 @@ spring:
 
         # ── User Service ───────────────────────────────────────────────────────
         - id: user-service
-          uri: ${USER_SERVICE_URL:http://localhost:8081}
+          uri: lb://USER-SERVICE
           predicates:
             - Path=/api/users/**,/api/wallet/**,/api/wallets/**,/api/notifications/**,/api/topups/**,/api/preferences/**,/api/profile/**
           filters:
@@ -122,7 +123,7 @@ spring:
                   basedOnPreviousValue: false
         # ── Bus Service ────────────────────────────────────────────────────────
         - id: bus-service
-          uri: ${BUS_SERVICE_URL:http://localhost:8082}
+          uri: lb://BUS-SERVICE
           predicates:
             - Path=/api/buses/**,/api/routes/**,/api/layouts/**,/api/schedules/**,/api/seats/**,/api/schedule-seats/**
           filters:
@@ -142,7 +143,7 @@ spring:
                   basedOnPreviousValue: false
         # ── Admin Bus Service ────────────────────────────────────────────────────────
         - id: admin-bus-service
-          uri: ${BUS_SERVICE_URL:http://localhost:8082}
+          uri: lb://BUS-SERVICE
           predicates:
             - Path=/api/admin/reports-bus
           filters:
@@ -162,7 +163,7 @@ spring:
                   basedOnPreviousValue: false
         # ── Admin — Booking Service ────────────────────────────────────────────
         - id: admin-booking-service
-          uri: ${BOOKING_SERVICE_URL:http://localhost:8083}
+          uri: lb://BOOKING-SERVICE
           predicates:
             - Path=/api/admin/bookings/**,/api/admin/reports-operation/**,/api/admin/financial-reports/**,/api/admin/dashboard/**,/api/admin/refunds/**
           filters:
@@ -183,7 +184,7 @@ spring:
 
         # ── Booking Service ────────────────────────────────────────────────────
         - id: booking-service
-          uri: ${BOOKING_SERVICE_URL:http://localhost:8083}
+          uri: lb://BOOKING-SERVICE
           predicates:
             - Path=/api/bookings/**,/api/payments/**,/api/tickets/**,/api/promos/**,/api/refunds/**
           filters:
@@ -220,10 +221,7 @@ eureka:
   instance:
     prefer-ip-address: true
     lease-renewal-interval-in-seconds: 30
-    lease-expiration-duration-in-seconds: 90
-
-management:
-  endpoints:
+    lease-expiration-duration-in-seconds: 90points:
     web:
       exposure:
         include: health,info,gateway,circuitbreakers,circuitbreakerevents,metrics
