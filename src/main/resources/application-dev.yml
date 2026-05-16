@@ -34,7 +34,7 @@ spring:
 
         # Bus Service WebSocket - All SockJS endpoints
         - id: bus-websocket
-          uri: lb:ws://bus-service
+          uri: ${BUS_SERVICE_WS_URL:ws://localhost:8082}
           predicates:
             - Path=/bus-service/ws/bus/**
           filters:
@@ -42,7 +42,7 @@ spring:
 
         # Booking Service WebSocket - All SockJS endpoints
         - id: booking-websocket
-          uri: lb:ws://booking-service
+          uri: ${BOOKING_SERVICE_WS_URL:ws://localhost:8083}
           predicates:
             - Path=/booking-service/ws/booking/**
           filters:
@@ -50,14 +50,14 @@ spring:
 
         # Admin Dashboard WebSocket
         - id: admin-dashboard-websocket
-          uri: lb:ws://booking-service
+          uri: ${BOOKING_SERVICE_WS_URL:ws://localhost:8083}
           predicates:
             - Path=/admin/ws/dashboard/**
           filters:
             - RewritePath=/admin/ws/dashboard/(?<segment>.*), /ws/booking/$\{segment}
         # ── Auth (public — no JWT required) ───────────────────────────────────
         - id: auth-service
-          uri: lb://user-service
+          uri: ${USER_SERVICE_URL:http://localhost:8081}
           predicates:
             - Path=/api/auth/**
           filters:
@@ -78,7 +78,7 @@ spring:
 
         # ── Admin — User Service ───────────────────────────────────────────────
         - id: admin-user-service
-          uri: lb://user-service
+          uri: ${USER_SERVICE_URL:http://localhost:8081}
           predicates:
             - Path=/api/admin/users/**,/api/admin/roles/**,/api/admin/permissions/**,/api/admin/reports-customer/**
           filters:
@@ -99,7 +99,7 @@ spring:
 
         # ── User Service ───────────────────────────────────────────────────────
         - id: user-service
-          uri: lb://user-service
+          uri: ${USER_SERVICE_URL:http://localhost:8081}
           predicates:
             - Path=/api/users/**,/api/wallet/**,/api/wallets/**,/api/notifications/**,/api/topups/**,/api/preferences/**,/api/profile/**
           filters:
@@ -119,7 +119,7 @@ spring:
                   basedOnPreviousValue: false
         # ── Bus Service ────────────────────────────────────────────────────────
         - id: bus-service
-          uri: lb://bus-service
+          uri: ${BUS_SERVICE_URL:http://localhost:8082}
           predicates:
             - Path=/api/buses/**,/api/routes/**,/api/layouts/**,/api/schedules/**,/api/seats/**,/api/schedule-seats/**
           filters:
@@ -139,7 +139,7 @@ spring:
                   basedOnPreviousValue: false
         # ── Admin Bus Service ────────────────────────────────────────────────────────
         - id: admin-bus-service
-          uri: lb://bus-service
+          uri: ${BUS_SERVICE_URL:http://localhost:8082}
           predicates:
             - Path=/api/admin/reports-bus
           filters:
@@ -159,7 +159,7 @@ spring:
                   basedOnPreviousValue: false
         # ── Admin — Booking Service ────────────────────────────────────────────
         - id: admin-booking-service
-          uri: lb://booking-service
+          uri: ${BOOKING_SERVICE_URL:http://localhost:8083}
           predicates:
             - Path=/api/admin/bookings/**,/api/admin/reports-operation/**,/api/admin/financial-reports/**,/api/admin/dashboard/**,/api/admin/refunds/**
           filters:
@@ -180,7 +180,7 @@ spring:
 
         # ── Booking Service ────────────────────────────────────────────────────
         - id: booking-service
-          uri: lb://booking-service
+          uri: ${BOOKING_SERVICE_URL:http://localhost:8083}
           predicates:
             - Path=/api/bookings/**,/api/payments/**,/api/tickets/**,/api/promos/**,/api/refunds/**
           filters:
