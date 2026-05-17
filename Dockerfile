@@ -2,14 +2,21 @@
 FROM gradle:8.5-jdk17 AS build
 WORKDIR /app
 
-# Copy entire project
-COPY . .
+# Copy gradle wrapper and root build files from backend directory
+COPY backend/gradlew gradlew
+COPY backend/gradle gradle
+COPY backend/build.gradle build.gradle
+COPY backend/settings.gradle settings.gradle
 
-# FIX: ensure gradlew is executable
+# Copy gateway-service specific files
+COPY backend/go-bus-gateway-service/build.gradle go-bus-gateway-service/build.gradle
+COPY backend/go-bus-gateway-service/src go-bus-gateway-service/src
+
+# Make gradlew executable
 RUN chmod +x gradlew
 
 # Build the application
-RUN ./gradlew build -x test --no-daemon
+RUN ./gradlew :go-bus-gateway-service:build -x test --no-daemon
 
 
 # ─── Stage 2: Runtime ───────────────────────────

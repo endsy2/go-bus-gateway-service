@@ -1,0 +1,27 @@
+# Development Dockerfile for Gateway Service
+# Optimized for fast rebuilds and development
+
+FROM gradle:8.5-jdk17
+WORKDIR /app
+
+# Copy gradle wrapper and build files
+COPY gradlew gradlew
+COPY gradle gradle
+COPY build.gradle build.gradle
+COPY settings.gradle settings.gradle
+
+# Copy service files
+COPY go-bus-gateway-service/build.gradle go-bus-gateway-service/build.gradle
+COPY go-bus-gateway-service/src go-bus-gateway-service/src
+
+# Make gradlew executable
+RUN chmod +x gradlew
+
+# Download dependencies (cached layer)
+RUN ./gradlew :go-bus-gateway-service:dependencies --no-daemon || true
+
+# Expose port
+EXPOSE 8080
+
+# Run with hot reload
+CMD ["./gradlew", ":go-bus-gateway-service:bootRun", "--no-daemon"]

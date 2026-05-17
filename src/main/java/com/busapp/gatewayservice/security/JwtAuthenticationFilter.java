@@ -62,33 +62,39 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String path = exchange.getRequest().getURI().getPath();
+        log.debug("Processing request to path: {}", path);
 
         // Skip public paths
         if (PUBLIC_PATHS.stream().anyMatch(path::startsWith)) {
+            log.debug("Path {} matches public path, skipping authentication", path);
             return chain.filter(exchange);
         }
 
         // Extract token
         String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            log.warn("Missing or invalid Authorization header for path: {}", path);
             return reject(exchange, HttpStatus.UNAUTHORIZED, "Missing or invalid Authorization header.");
         }
         String token = authHeader.substring(7);
+        log.debug("Extracted JWT token for path: {}", path);
 
         // Parse + verify signature
         Claims claims;
         try {
+            log.debug("Attempting to parse and verify JWT token");
             claims = Jwts.parser()
                     .verifyWith(rsaPublicKey)
                     .build()
                     .parseSignedClaims(token)
                     .getPayload();
+            log.debug("JWT token successfully parsed. Subject: {}, Type: {}", claims.getSubject(), claims.get("type"));
         } catch (ExpiredJwtException e) {
-            log.info("Access token expired for path {}: {}", exchange.getRequest().getURI().getPath(), e.getMessage());
+            log.warn("Access token expired for path {}: {}", exchange.getRequest().getURI().getPath(), e.getMessage());
             return rejectWithBody(exchange, HttpStatus.UNAUTHORIZED, "TOKEN_EXPIRED",
                     "Access token has expired. Please use POST /api/auth/refresh to obtain a new token.");
         } catch (JwtException e) {
-            log.info("JWT validation failed: {}", e.getMessage());
+            log.error("JWT validation failed for path {}: {}", exchange.getRequest().getURI().getPath(), e.getMessage(), e);
             return rejectWithBody(exchange, HttpStatus.UNAUTHORIZED, "INVALID_TOKEN",
                     "Invalid token. Please log in again.");
         }
@@ -103,6 +109,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         return redisTokenService.isBlacklisted(token)
                 .flatMap(blacklisted -> {
                     if (Boolean.TRUE.equals(blacklisted)) {
+                        log.warn("Token has been revoked for user: {}", claims.getSubject());
                         return reject(exchange, HttpStatus.UNAUTHORIZED, "Token has been revoked.");
                     }
 
@@ -128,13 +135,14 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                     newHeaders.set("X-User-Roles",       rolesHeader);
                     newHeaders.set("X-User-Permissions", permissionsHeader);
 
-                    ServerHttpRequestDecorator mutatedRequest =
-                    new ServerHttpRequestDecorator(exchange.getRequest()) {
-                    @Override
-                    public HttpHeaders getHeaders() {
-                        return newHeaders;
-                    }
-        };
+                    log.debug("Added authentication headers for user: {} ({})", claims.getSubject(), claims.get("email"));
+
+                    ServerHttpRequestDecorator mutatedRequest = new ServerHttpRequestDecorator(exchange.getRequest()) {
+                        @Override
+                        public HttpHeaders getHeaders() {
+                            return HttpHeaders.readOnlyHttpHeaders(newHeaders);
+                        }
+                    };
 
                     return chain.filter(exchange.mutate().request(mutatedRequest).build());
                 });
