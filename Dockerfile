@@ -1,27 +1,30 @@
-# Development Dockerfile for Gateway Service
-# Optimized for fast rebuilds and development
-
-FROM gradle:8.5-jdk17
+# ─── Stage 1: Build ─────────────────────────────
+FROM gradle:8.5-jdk17 AS build
 WORKDIR /app
 
-# Copy gradle wrapper and build files
-COPY gradlew gradlew
-COPY gradle gradle
-COPY build.gradle build.gradle
-COPY settings.gradle settings.gradle
+# Copy entire project
+COPY . .
 
-# Copy service files
-COPY go-bus-gateway-service/build.gradle go-bus-gateway-service/build.gradle
-COPY go-bus-gateway-service/src go-bus-gateway-service/src
-
-# Make gradlew executable
+# FIX: ensure gradlew is executable
 RUN chmod +x gradlew
 
-# Download dependencies (cached layer)
-RUN ./gradlew :go-bus-gateway-service:dependencies --no-daemon || true
+# Build the application
+RUN ./gradlew build -x test --no-daemon
 
-# Expose port
+
+# ─── Stage 2: Runtime ───────────────────────────
+FROM eclipse-temurin:17-jre-alpine
+WORKDIR /app
+
+RUN apk add --no-cache curl
+
+# Copy built jar with explicit name
+COPY --from=build /app/build/libs/gateway-service.jar app.jar
+
+# Verify jar exists and list contents
+RUN ls -lh /app/ && echo "Java version:" && java -version
+
 EXPOSE 8080
 
-# Run with hot reload
-CMD ["./gradlew", ":go-bus-gateway-service:bootRun", "--no-daemon"]
+# Add verbose logging to see what's happening
+ENTRYPOINT ["sh", "-c", "echo 'Starting Gateway Server on port '${PORT:-8080} && java -Dserver.port=${PORT:-8080} -Dspring.profiles.active=${SPRING_PROFILES_ACTIVE:-prod} -Xmx768m -Xms512m -jar app.jar"]
