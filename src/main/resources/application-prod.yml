@@ -303,9 +303,6 @@ resilience4j:
         timeoutDuration: 10s  # Increased from 5s to 10s for general requests
         cancelRunningFuture: true
     instances:
-      bakongTopUpCB:
-        timeoutDuration: 300s  # 5 minutes for Bakong top-up processing
-        cancelRunningFuture: false
       userServiceCB:
         baseConfig: default
       busServiceCB:
