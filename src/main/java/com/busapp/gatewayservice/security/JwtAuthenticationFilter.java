@@ -47,8 +47,6 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             "/api/auth/refresh",
             "/actuator",
             "/health",
-            "/",
-            // WebSocket endpoints - all SockJS paths
             "/bus-service/ws/",
             "/booking-service/ws/",
             "/admin/ws/"
@@ -65,7 +63,8 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         log.debug("Processing request to path: {}", path);
 
         // Skip public paths
-        if (PUBLIC_PATHS.stream().anyMatch(path::startsWith)) {
+       
+        if (path.equals("/") || PUBLIC_PATHS.stream().anyMatch(p -> path.startsWith(p))) {
             log.debug("Path {} matches public path, skipping authentication", path);
             return chain.filter(exchange);
         }
