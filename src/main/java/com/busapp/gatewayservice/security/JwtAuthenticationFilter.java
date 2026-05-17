@@ -140,6 +140,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                     ServerHttpRequestDecorator mutatedRequest = new ServerHttpRequestDecorator(exchange.getRequest()) {
                         @Override
                         public HttpHeaders getHeaders() {
+                            log.info("X-User-Id: {}", newHeaders.getFirst("X-User-Id"));
                             return HttpHeaders.readOnlyHttpHeaders(newHeaders);
                         }
                     };
