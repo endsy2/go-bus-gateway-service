@@ -24,6 +24,14 @@ spring:
       ribbon:
         enabled: false
     gateway:
+      # ── HTTP Client Configuration (for long-running requests) ──────────────
+      httpclient:
+        connect-timeout: 5000      # 5 seconds to establish connection
+        response-timeout: 310s     # 5 minutes + 10s buffer for Bakong
+        pool:
+          type: ELASTIC
+          max-connections: 500
+          max-idle-time: 30s
       # Disable automatic service discovery for direct URL routing
       discovery:
         locator:
@@ -97,6 +105,24 @@ spring:
                   maxBackoff: 500ms
                   factor: 2
                   basedOnPreviousValue: false
+
+        # ── Bakong Top-Up (needs 5-minute timeout for payment processing) ──────
+        - id: bakong-topup-service
+          uri: ${USER_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/wallets/top-up/bakong/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: bakongTopUpCB
+            - name: Retry
+              args:
+                retries: 1  # Don't retry long-running requests (5 min)
+                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
+                methods: POST
+          metadata:
+            response-timeout: 310000  # 5 minutes + 10 seconds (milliseconds)
+            connect-timeout: 5000      # 5 seconds (milliseconds)
 
         # ── User Service ───────────────────────────────────────────────────────
         - id: user-service
@@ -258,6 +284,11 @@ resilience4j:
         ignoreExceptions:
           - org.springframework.web.client.HttpClientErrorException
     instances:
+      bakongTopUpCB:
+        baseConfig: default
+        failureRateThreshold: 60
+        slowCallDurationThreshold: 300s  # 5 minutes (don't mark as slow)
+        minimumNumberOfCalls: 3  # Lower threshold for long requests
       userServiceCB:
         baseConfig: default
       busServiceCB:
@@ -272,6 +303,9 @@ resilience4j:
         timeoutDuration: 10s  # Increased from 5s to 10s for general requests
         cancelRunningFuture: true
     instances:
+      bakongTopUpCB:
+        timeoutDuration: 300s  # 5 minutes for Bakong top-up processing
+        cancelRunningFuture: false
       userServiceCB:
         baseConfig: default
       busServiceCB:
