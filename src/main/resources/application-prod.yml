@@ -42,7 +42,46 @@ spring:
 
         # ── WebSocket Routes ────────────────────────────────────────────────
         # IMPORTANT: WebSocket routes must come BEFORE HTTP routes to match correctly
-
+        # ── Bakong Topup Service ────────────────────────────────────────────────────
+        - id: bakong-topup-service
+          uri: ${USER_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/topups/bakong/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: bakongServiceCB
+                fallbackUri: forward:/fallback/user-service
+            - name: Retry
+              args:
+                retries: 3
+                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE,GATEWAY_TIMEOUT
+                methods: GET,POST,PUT,DELETE
+                backoff:
+                  firstBackoff: 50ms
+                  maxBackoff: 500ms
+                  factor: 2
+                  basedOnPreviousValue: false
+        # ── Bakong Topup Service ────────────────────────────────────────────────────
+        - id: bakong-booking-service
+          uri: ${BOOKING_SERVICE_URL:http://localhost:8083}
+          predicates:
+            - Path=/api/payments/bakong/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: bakongServiceCB
+                fallbackUri: forward:/fallback/booking-service
+            - name: Retry
+              args:
+                retries: 3
+                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE,GATEWAY_TIMEOUT
+                methods: GET,POST,PUT,DELETE
+                backoff:
+                  firstBackoff: 50ms
+                  maxBackoff: 500ms
+                  factor: 2
+                  basedOnPreviousValue: false
         # Bus Service WebSocket - All SockJS endpoints
         - id: bus-websocket
           uri: ${BUS_SERVICE_WS_URL:ws://localhost:8082}
@@ -75,6 +114,7 @@ spring:
             - name: CircuitBreaker
               args:
                 name: userServiceCB
+                fallbackUri: forward:/fallback/user-service
             - name: Retry
               args:
                 retries: 3
@@ -95,6 +135,7 @@ spring:
             - name: CircuitBreaker
               args:
                 name: userServiceCB
+                fallbackUri: forward:/fallback/user-service
             - name: Retry
               args:
                 retries: 3
@@ -106,24 +147,6 @@ spring:
                   factor: 2
                   basedOnPreviousValue: false
 
-        # ── Bakong Top-Up (needs 5-minute timeout for payment processing) ──────
-        - id: bakong-topup-service
-          uri: ${USER_SERVICE_URL:http://localhost:8081}
-          predicates:
-            - Path=/api/wallets/top-up/bakong/**
-          filters:
-            - name: CircuitBreaker
-              args:
-                name: bakongTopUpCB
-            - name: Retry
-              args:
-                retries: 1  # Don't retry long-running requests (5 min)
-                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
-                methods: POST
-          metadata:
-            response-timeout: 310000  # 5 minutes + 10 seconds (milliseconds)
-            connect-timeout: 5000      # 5 seconds (milliseconds)
-
         # ── User Service ───────────────────────────────────────────────────────
         - id: user-service
           uri: ${USER_SERVICE_URL:http://localhost:8081}
@@ -133,6 +156,7 @@ spring:
             - name: CircuitBreaker
               args:
                 name: userServiceCB
+                fallbackUri: forward:/fallback/user-service
             - name: Retry
               args:
                 retries: 3
@@ -152,6 +176,7 @@ spring:
             - name: CircuitBreaker
               args:
                 name: busServiceCB
+                fallbackUri: forward:/fallback/bus-service
             - name: Retry
               args:
                 retries: 3
@@ -171,6 +196,7 @@ spring:
             - name: CircuitBreaker
               args:
                 name: busServiceCB
+                fallbackUri: forward:/fallback/bus-service
             - name: Retry
               args:
                 retries: 3
@@ -190,6 +216,7 @@ spring:
             - name: CircuitBreaker
               args:
                 name: bookingServiceCB
+                fallbackUri: forward:/fallback/booking-service
             - name: Retry
               args:
                 retries: 3
@@ -210,6 +237,7 @@ spring:
             - name: CircuitBreaker
               args:
                 name: bookingServiceCB
+                fallbackUri: forward:/fallback/booking-service
             - name: Retry
               args:
                 retries: 3
@@ -293,6 +321,7 @@ resilience4j:
         baseConfig: default
       busServiceCB:
         baseConfig: default
+      bakongServiceCB: default
       bookingServiceCB:
         baseConfig: default
         failureRateThreshold: 60
@@ -307,6 +336,9 @@ resilience4j:
         baseConfig: default
       busServiceCB:
         baseConfig: default
+      bakongServiceCB:
+        timeoutDuration: 300s  # 5 minutes for payment processing (Bakong API)
+        cancelRunningFuture: false
       bookingServiceCB:
         timeoutDuration: 300s  # 5 minutes for payment processing (Bakong API)
         cancelRunningFuture: false

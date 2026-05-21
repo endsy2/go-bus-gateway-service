@@ -204,6 +204,8 @@ spring:
             - Path=/admin/ws/dashboard/**
           filters:
             - RewritePath=/admin/ws/dashboard/(?<segment>.*), /ws/booking/$\{segment}
+  profiles:
+    active: dev
 
 
 # ── JWT Configuration ──────────────────────────────────────────────────────────
