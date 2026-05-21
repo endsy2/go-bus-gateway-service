@@ -321,7 +321,8 @@ resilience4j:
         baseConfig: default
       busServiceCB:
         baseConfig: default
-      bakongServiceCB: default
+      bakongServiceCB:
+        base-config: default
       bookingServiceCB:
         baseConfig: default
         failureRateThreshold: 60
