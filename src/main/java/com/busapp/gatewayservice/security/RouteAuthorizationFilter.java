@@ -57,76 +57,76 @@ public class RouteAuthorizationFilter implements GlobalFilter, Ordered {
     private static final List<RouteRule> RULES = List.of(
 
         // ── User Service ─────────────────────────────────────────────────────
-//        rule("GET",    "/api/users/profile/**",      ANY_AUTHENTICATED),      // own profile
-//        rule("PUT",    "/api/users/profile/**",      ANY_AUTHENTICATED),      // own profile
-//        rule("GET",    "/api/users/me/**",           ANY_AUTHENTICATED),      // back-compat
-//        rule("PUT",    "/api/users/me/**",           ANY_AUTHENTICATED),      // back-compat
-//
-//        rule("GET",    "/api/users/**",              "USER_READ"),
-//        rule("PUT",    "/api/users/**",              "USER_WRITE"),
-//        rule("PATCH",  "/api/users/**",              "USER_WRITE"),
-//        rule("DELETE", "/api/users/**",              "USER_DELETE"),
-//
-//        rule("GET",    "/api/wallet/**",             "WALLET_READ"),
-//        rule("POST",   "/api/wallet/**",             "WALLET_WRITE"),
-//        rule("PATCH",  "/api/wallet/**",             "WALLET_WRITE"),
-//
-//        rule("GET",    "/api/notifications/**",      "NOTIFICATION_READ"),
-//        rule("PUT",    "/api/notifications/**",      "NOTIFICATION_WRITE"),
-//        rule("PATCH",  "/api/notifications/**",      "NOTIFICATION_WRITE"),
-//
-//        // ── Bus Service ──────────────────────────────────────────────────────
-//        rule("GET",    "/api/buses/**",              "BUS_READ"),
-//        rule("POST",   "/api/buses/**",              "BUS_WRITE"),
-//        rule("PUT",    "/api/buses/**",              "BUS_WRITE"),
-//        rule("PATCH",  "/api/buses/**",              "BUS_WRITE"),
-//        rule("DELETE", "/api/buses/**",              "BUS_DELETE"),
-//
-//        rule("GET",    "/api/routes/**",             "BUS_READ"),
-//        rule("POST",   "/api/routes/**",             "BUS_WRITE"),
-//        rule("PUT",    "/api/routes/**",             "BUS_WRITE"),
-//        rule("PATCH",  "/api/routes/**",             "BUS_WRITE"),
-//        rule("DELETE", "/api/routes/**",             "BUS_DELETE"),
-//
-//        rule("GET",    "/api/schedules/**",          "BUS_READ"),
-//        rule("POST",   "/api/schedules/**",          "BUS_WRITE"),
-//        rule("PUT",    "/api/schedules/**",          "BUS_WRITE"),
-//        rule("PATCH",  "/api/schedules/**",          "BUS_WRITE"),
-//        rule("DELETE", "/api/schedules/**",          "BUS_DELETE"),
-//
-//        rule("GET",    "/api/seats/**",              "BUS_READ"),
-//        rule("POST",   "/api/seats/**",              "BUS_WRITE"),
-//        rule("PUT",    "/api/seats/**",              "BUS_WRITE"),
-//        rule("PATCH",  "/api/seats/**",              "BUS_WRITE"),
-//        rule("DELETE", "/api/seats/**",              "BUS_DELETE"),
-//
-//        rule("GET",    "/api/layouts/**",            "BUS_READ"),
-//        rule("POST",   "/api/layouts/**",            "BUS_WRITE"),
-//        rule("PUT",    "/api/layouts/**",            "BUS_WRITE"),
-//        rule("PATCH",  "/api/layouts/**",            "BUS_WRITE"),
-//        rule("DELETE", "/api/layouts/**",            "BUS_DELETE"),
-//
-//        // ── Booking Service ──────────────────────────────────────────────────
-//        rule("GET",    "/api/bookings/**",           "BOOKING_READ"),
-//        rule("POST",   "/api/bookings/**",           "BOOKING_WRITE"),
-//        rule("PUT",    "/api/bookings/**",           "BOOKING_WRITE"),
-//        rule("PATCH",  "/api/bookings/**",           "BOOKING_WRITE"),
-//        rule("DELETE", "/api/bookings/**",           "BOOKING_DELETE"),
-//
-//        rule("GET",    "/api/payments/**",           "PAYMENT_READ"),
-//        rule("POST",   "/api/payments/**",           "PAYMENT_WRITE"),
-//
-//        rule("GET",    "/api/tickets/**",            "TICKET_READ"),
-//        rule("POST",   "/api/tickets/**",            "TICKET_READ"),
-//
-//        rule("GET",    "/api/promos/**",             "PROMO_READ"),
-//        rule("POST",   "/api/promos/**",             "PROMO_MANAGE"),
-//        rule("PUT",    "/api/promos/**",             "PROMO_MANAGE"),
-//        rule("PATCH",  "/api/promos/**",             "PROMO_MANAGE"),
-//        rule("DELETE", "/api/promos/**",             "PROMO_MANAGE"),
-//
-//        // ── Admin catch-all ──────────────────────────────────────────────────
-//        rule("*",      "/api/admin/**",              "ADMIN_ACCESS")
+        rule("GET",    "/api/users/profile/**",      ANY_AUTHENTICATED),      // own profile
+        rule("PUT",    "/api/users/profile/**",      ANY_AUTHENTICATED),      // own profile
+        rule("GET",    "/api/users/me/**",           ANY_AUTHENTICATED),      // back-compat
+        rule("PUT",    "/api/users/me/**",           ANY_AUTHENTICATED),      // back-compat
+
+        rule("GET",    "/api/users/**",              "USER_READ"),
+        rule("PUT",    "/api/users/**",              "USER_WRITE"),
+        rule("PATCH",  "/api/users/**",              "USER_WRITE"),
+        rule("DELETE", "/api/users/**",              "USER_DELETE"),
+
+        rule("GET",    "/api/wallet/**",             "WALLET_READ"),
+        rule("POST",   "/api/wallet/**",             "WALLET_WRITE"),
+        rule("PATCH",  "/api/wallet/**",             "WALLET_WRITE"),
+
+        rule("GET",    "/api/notifications/**",      "NOTIFICATION_READ"),
+        rule("PUT",    "/api/notifications/**",      "NOTIFICATION_WRITE"),
+        rule("PATCH",  "/api/notifications/**",      "NOTIFICATION_WRITE"),
+
+        // ── Bus Service ──────────────────────────────────────────────────────
+        rule("GET",    "/api/buses/**",              "BUS_READ"),
+        rule("POST",   "/api/buses/**",              "BUS_WRITE"),
+        rule("PUT",    "/api/buses/**",              "BUS_WRITE"),
+        rule("PATCH",  "/api/buses/**",              "BUS_WRITE"),
+        rule("DELETE", "/api/buses/**",              "BUS_DELETE"),
+
+        rule("GET",    "/api/routes/**",             "BUS_READ"),
+        rule("POST",   "/api/routes/**",             "BUS_WRITE"),
+        rule("PUT",    "/api/routes/**",             "BUS_WRITE"),
+        rule("PATCH",  "/api/routes/**",             "BUS_WRITE"),
+        rule("DELETE", "/api/routes/**",             "BUS_DELETE"),
+
+        rule("GET",    "/api/schedules/**",          "BUS_READ"),
+        rule("POST",   "/api/schedules/**",          "BUS_WRITE"),
+        rule("PUT",    "/api/schedules/**",          "BUS_WRITE"),
+        rule("PATCH",  "/api/schedules/**",          "BUS_WRITE"),
+        rule("DELETE", "/api/schedules/**",          "BUS_DELETE"),
+
+        rule("GET",    "/api/seats/**",              "BUS_READ"),
+        rule("POST",   "/api/seats/**",              "BUS_WRITE"),
+        rule("PUT",    "/api/seats/**",              "BUS_WRITE"),
+        rule("PATCH",  "/api/seats/**",              "BUS_WRITE"),
+        rule("DELETE", "/api/seats/**",              "BUS_DELETE"),
+
+        rule("GET",    "/api/layouts/**",            "BUS_READ"),
+        rule("POST",   "/api/layouts/**",            "BUS_WRITE"),
+        rule("PUT",    "/api/layouts/**",            "BUS_WRITE"),
+        rule("PATCH",  "/api/layouts/**",            "BUS_WRITE"),
+        rule("DELETE", "/api/layouts/**",            "BUS_DELETE"),
+
+        // ── Booking Service ──────────────────────────────────────────────────
+        rule("GET",    "/api/bookings/**",           "BOOKING_READ"),
+        rule("POST",   "/api/bookings/**",           "BOOKING_WRITE"),
+        rule("PUT",    "/api/bookings/**",           "BOOKING_WRITE"),
+        rule("PATCH",  "/api/bookings/**",           "BOOKING_WRITE"),
+        rule("DELETE", "/api/bookings/**",           "BOOKING_DELETE"),
+
+        rule("GET",    "/api/payments/**",           "PAYMENT_READ"),
+        rule("POST",   "/api/payments/**",           "PAYMENT_WRITE"),
+
+        rule("GET",    "/api/tickets/**",            "TICKET_READ"),
+        rule("POST",   "/api/tickets/**",            "TICKET_READ"),
+
+        rule("GET",    "/api/promos/**",             "PROMO_READ"),
+        rule("POST",   "/api/promos/**",             "PROMO_MANAGE"),
+        rule("PUT",    "/api/promos/**",             "PROMO_MANAGE"),
+        rule("PATCH",  "/api/promos/**",             "PROMO_MANAGE"),
+        rule("DELETE", "/api/promos/**",             "PROMO_MANAGE"),
+
+        // ── Admin catch-all ──────────────────────────────────────────────────
+        rule("*",      "/api/admin/**",              "ADMIN_ACCESS")
     );
 
     @Override
