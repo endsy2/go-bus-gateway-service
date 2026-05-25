@@ -130,7 +130,7 @@ spring:
         - id: admin-user-service
           uri: ${USER_SERVICE_URL:http://localhost:8081}
           predicates:
-            - Path=/api/admin/users/**,/api/admin/roles/**,/api/admin/permissions/**,/api/admin/reports-customer/**
+            - Path=/api/admin/users/**,/api/admin/roles/**,/api/admin/permissions/**,/api/admin/reports-customer/**,/api/admin/wallets/**
           filters:
             - name: CircuitBreaker
               args:

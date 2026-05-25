@@ -113,6 +113,8 @@ public class RouteAuthorizationFilter implements GlobalFilter, Ordered {
         rule("PATCH",  "/api/bookings/**",           "BOOKING_WRITE"),
         rule("DELETE", "/api/bookings/**",           "BOOKING_DELETE"),
 
+        rule("GET","/api/wallets/**",              "WALLET_READ"),
+
         rule("GET",    "/api/payments/**",           "PAYMENT_READ"),
         rule("POST",   "/api/payments/**",           "PAYMENT_WRITE"),
 
