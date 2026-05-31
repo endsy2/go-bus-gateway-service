@@ -151,7 +151,7 @@ spring:
         - id: user-service
           uri: ${USER_SERVICE_URL:http://localhost:8081}
           predicates:
-            - Path=/api/users/**,/api/wallet/**,/api/wallets/**,/api/notifications/**,/api/topups/**,/api/preferences/**,/api/profile/**
+            - Path=/api/users/**,/api/wallet/**,/api/wallets/**,/api/notifications/**,/api/topups/**,/api/preferences/**,/api/profile/**,
           filters:
             - name: CircuitBreaker
               args:
