@@ -6,6 +6,8 @@ import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import static net.logstash.logback.argument.StructuredArguments.kv;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
@@ -89,11 +91,12 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                     .getPayload();
             log.debug("JWT token successfully parsed. Subject: {}, Type: {}", claims.getSubject(), claims.get("type"));
         } catch (ExpiredJwtException e) {
-            log.warn("Access token expired for path {}: {}", exchange.getRequest().getURI().getPath(), e.getMessage());
+            log.warn("TOKEN_VALIDATION_FAILED", kv("path", path), kv("reason", "EXPIRED"));
             return rejectWithBody(exchange, HttpStatus.UNAUTHORIZED, "TOKEN_EXPIRED",
                     "Access token has expired. Please use POST /api/auth/refresh to obtain a new token.");
         } catch (JwtException e) {
-            log.error("JWT validation failed for path {}: {}", exchange.getRequest().getURI().getPath(), e.getMessage(), e);
+            // Client-side error (bad/forged token) — warn without a full stack trace, never log the token itself.
+            log.warn("TOKEN_VALIDATION_FAILED", kv("path", path), kv("reason", "INVALID"), kv("detail", e.getMessage()));
             return rejectWithBody(exchange, HttpStatus.UNAUTHORIZED, "INVALID_TOKEN",
                     "Invalid token. Please log in again.");
         }
@@ -101,6 +104,8 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         // Enforce access token type
 
         if (!"access".equals(claims.get("type"))) {
+            log.warn("TOKEN_VALIDATION_FAILED", kv("path", path), kv("reason", "WRONG_TOKEN_TYPE"),
+                    kv("userId", claims.getSubject()));
             return reject(exchange, HttpStatus.UNAUTHORIZED, "Token is not an access token.");
         }
 
@@ -139,7 +144,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                     ServerHttpRequestDecorator mutatedRequest = new ServerHttpRequestDecorator(exchange.getRequest()) {
                         @Override
                         public HttpHeaders getHeaders() {
-                            log.info("X-User-Id: {}", newHeaders.getFirst("X-User-Id"));
+                            // NOTE: getHeaders() is invoked many times per request — do not log here.
                             return HttpHeaders.readOnlyHttpHeaders(newHeaders);
                         }
                     };

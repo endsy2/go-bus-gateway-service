@@ -67,6 +67,11 @@ public class RouteAuthorizationFilter implements GlobalFilter, Ordered {
         rule("PATCH",  "/api/users/**",              "USER_WRITE"),
         rule("DELETE", "/api/users/**",              "USER_DELETE"),
 
+        rule("GET",    "/api/users/profile/**",              "USER_READ"),
+        rule("PUT",    "/api/users/profile/**",              "USER_WRITE"),
+        rule("PATCH",  "/api/users/profile/**",              "USER_WRITE"),
+        rule("DELETE", "/api/users/profile/**",              "USER_DELETE"),
+
         rule("GET",    "/api/wallet/**",             "WALLET_READ"),
         rule("POST",   "/api/wallet/**",             "WALLET_WRITE"),
         rule("PATCH",  "/api/wallet/**",             "WALLET_WRITE"),

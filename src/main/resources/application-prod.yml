@@ -316,9 +316,13 @@ resilience4j:
         baseConfig: default
         failureRateThreshold: 60
         slowCallDurationThreshold: 300s  # 5 minutes (don't mark as slow)
-        minimumNumberOfCalls: 3  # Lower threshold for long requests
+        minimumNumberOfCalls: 3
       userServiceCB:
         baseConfig: default
+        slowCallDurationThreshold: 8s    # raised from 2s — DB + Railway latency can take 3-5s
+        minimumNumberOfCalls: 10         # need 10 calls before tripping, not 5
+        slidingWindowSize: 20            # wider window so one slow burst doesn't trip the CB
+        waitDurationInOpenState: 20s     # stay open longer so the service has time to recover
       busServiceCB:
         baseConfig: default
       bakongServiceCB:
@@ -326,50 +330,33 @@ resilience4j:
       bookingServiceCB:
         baseConfig: default
         failureRateThreshold: 60
-        slowCallDurationThreshold: 5s
+        slowCallDurationThreshold: 8s
   timelimiter:
     configs:
       default:
-        timeoutDuration: 10s  # Increased from 5s to 10s for general requests
+        timeoutDuration: 15s             # raised from 10s — gives user-service room to breathe
         cancelRunningFuture: true
     instances:
       userServiceCB:
-        baseConfig: default
+        timeoutDuration: 15s
+        cancelRunningFuture: true
       busServiceCB:
         baseConfig: default
       bakongServiceCB:
-        timeoutDuration: 300s  # 5 minutes for payment processing (Bakong API)
+        timeoutDuration: 300s
         cancelRunningFuture: false
       bookingServiceCB:
-        timeoutDuration: 300s  # 5 minutes for payment processing (Bakong API)
+        timeoutDuration: 300s
         cancelRunningFuture: false
 
 logging:
   level:
     root: INFO
-    com.busapp.gatewayservice: DEBUG
-    # Gateway routing and request handling
-    org.springframework.cloud.gateway: DEBUG
-    org.springframework.cloud.gateway.handler: DEBUG
-    org.springframework.cloud.gateway.filter: DEBUG
-    org.springframework.cloud.gateway.route: DEBUG
-    org.springframework.cloud.gateway.handler.RoutePredicateHandlerMapping: DEBUG
-    # Circuit breaker and resilience
-    org.springframework.cloud.gateway.filter.factory.SpringCloudCircuitBreakerFilterFactory: DEBUG
-    io.github.resilience4j: DEBUG
-    # HTTP client and network
-    org.springframework.web: DEBUG
-    org.springframework.web.reactive: DEBUG
-    org.springframework.http: DEBUG
-    reactor.netty: DEBUG
-    reactor.netty.http.client: DEBUG
-    # Security and authentication
-    org.springframework.security: DEBUG
-    org.springframework.security.web: DEBUG
-    # Service discovery
-    com.netflix.discovery: DEBUG
-    org.springframework.cloud.netflix.eureka: DEBUG
-    # Load balancer
-    org.springframework.cloud.loadbalancer: DEBUG
-    # Suppress known noise
+    com.busapp.gatewayservice: INFO
+    org.springframework.cloud.gateway: WARN
     org.springframework.cloud.gateway.filter.headers.observation: WARN
+    io.github.resilience4j: INFO           # log CB state changes (OPEN/CLOSED)
+    reactor.netty: WARN
+    org.springframework.security: WARN
+    com.netflix.discovery: WARN
+    org.springframework.cloud.netflix.eureka: WARN
